@@ -6,7 +6,5 @@ learning how the algorithms work. Various unit tests unearthing the implementati
 Where possible, an attempt will be made to use these implementations in other uses (e.g. Kaggle)
 
 TODO - 
-1) Lasso Linear regression
-2) Logisitc regression with similar shrinkage methods
-3) Gaussian matrix  model - EM algorithm in optimiser
-4) basic DNN implementation with standard functions
+1) Add linear regression regularising variants (lasso, ridge).
+2) add sgd to optimisers.
