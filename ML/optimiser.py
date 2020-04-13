@@ -13,7 +13,7 @@ class optimiser:
         pass
 
 class gradientDescent(optimiser):
-    def __init__(self, learning_rate, max_iteration = 100, tolerance = 0.0001):
+    def __init__(self, learning_rate, max_iteration = 100, tolerance = 0.0001, notebook = False):
         
         self.lr = learning_rate
         self.history = []
@@ -21,7 +21,8 @@ class gradientDescent(optimiser):
         self.weights_init = None
         self.max_iteration = max_iteration
         self.tolerance = tolerance
-    
+        self.notebook = notebook
+
     def _weights_init(self,weights):
         self.weights_init = weights
 
@@ -35,7 +36,10 @@ class gradientDescent(optimiser):
         self._create_dloss()
         current = self.loss_function(self.weights_init)
 
-        t = tqdm(range(0,self.max_iteration))
+        if self.notebook:
+            t = tqdm_notebook(range(0,self.max_iteration))
+        else:
+            t = tqdm(range(0,self.max_iteration))
 
         for i in t:
             self.history.append(current)
