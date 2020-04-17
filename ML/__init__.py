@@ -8,3 +8,5 @@ from mixtureModels import *
 from optimiser import *
 from preprocessing import *
 from linearClassifierModels import *
+from discriminantModels import *
+from kernels import *   
