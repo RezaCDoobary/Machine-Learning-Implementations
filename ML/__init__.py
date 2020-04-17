@@ -7,3 +7,4 @@ from measurements import *
 from mixtureModels import *
 from optimiser import *
 from preprocessing import *
+from linearClassifierModels import *
