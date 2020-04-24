@@ -2,6 +2,7 @@ import cvxopt
 from cvxopt import matrix, solvers 
 import numpy as np
 import kernels as kl
+from numpy.linalg import inv
 
 class DiscriminantClassifier:
     pass
@@ -106,4 +107,188 @@ class SVM(DiscriminantClassifier):
         values = self.predict_value(X)
         return np.array([np.sign(val) for val in values])
         
+class LeastSquares(DiscriminantClassifier):
+    def __init__(self):
+        pass
+        
+    def setUp(self, X, y):
+        self.classes = np.unique(y)
+        self.K = len(self.classes)
+        
+        
+        idx = 0
+        self.N,self.p = X.shape
+        new_col = np.array([1]*self.N)
+        self.X = np.insert(X, idx, new_col, axis=1)
+        
+        self.T = np.zeros((self.K,len(y)))
+        for i,c in enumerate(self.classes):
+            self.T[i] = np.array(y== self.classes[i],int)
+        
+    def fit(self, X, y):
+        self.setUp(X,y)
+        
+        first = inv(np.matmul(self.X.T,self.X))
+        second = np.matmul(self.X.T, self.T.T)
+        self.W = np.matmul(first, second).T
+        
+    def loss(self):
+        diff = np.matmul(self.W,self.X.T) - T
+        E = np.trace(np.matmul(diff, diff.T))/2
+        return E
     
+    
+    def predict_discriminant_function(self, X):
+        
+        n_w, p_w  = self.W.shape
+        n_x, p_x = X.shape
+        if p_x != p_w:
+            idx = 0
+            new_col = np.array([1]*n_x)
+            X = np.insert(X, idx, new_col, axis=1)
+        return np.matmul(self.W,X.T).T
+        
+    def predict(self,X):
+
+        disc = self.predict_discriminant_function(X)
+        return np.argmax(disc,1)
+    
+class Perceptron(DiscriminantClassifier):
+    """
+    Binary case
+    """
+    def __init__(self):
+        pass
+    
+    def setUp(self, X, y):
+        self.classes = np.unique(y)
+        self.K = len(self.classes)
+        
+        self.y = y
+        idx = 0
+        self.N,self.p = X.shape
+        new_col = np.array([1]*self.N)
+        self.X = np.insert(X, idx, new_col, axis=1)
+        self.T = self.y - np.array(self.y == 0,int)
+        
+        self.W = self.X.mean(0)
+        
+    def _find_misclassifications(self):
+        res = np.array(np.matmul(self.W,self.X.T) >= 0,int) - np.array(np.matmul(self.W,self.X.T) < 0,int)
+        misclassified_indices = np.where(res != self.T) 
+        return misclassified_indices
+        
+    def loss(self):
+        misclassified_indices = self._find_misclassifications()
+        X_part = np.matmul(self.W,self.X[misclassified_indices].T)
+        T_part = self.T[misclassified_indices]
+
+        return -np.sum(np.multiply(X_part, T_part))
+    
+    def fit(self, X, y, learning_rate = 0.001, max_iterations = 10000, print_every = 1000, tolerance = 10e-8,\
+           verbose = True):
+        self.setUp(X,y)
+        current_W = self.W
+        for _ in range(max_iterations):
+
+            misclassified_indices = self._find_misclassifications()
+            X_part = self.X[misclassified_indices]
+            T_part = self.T[misclassified_indices]
+            self.W = self.W + learning_rate*np.matmul(X_part.T, T_part)
+            loss = self.loss()
+            if _%print_every==0:
+                if verbose:
+                    print(loss)
+            if abs(np.sum(self.W - current_W)) < tolerance:
+                if verbose:
+                    print('Tolerance reached at {} with inner product difference {}'.\
+                          format(self.W, abs(np.sum(self.W - current_W))))
+                break
+            
+            if loss == 0:
+                if verbose:
+                    print('Loss = 0 reached')
+                break
+                
+    def predict_discriminant(self, X):
+        n_w  = self.W.shape
+        n_x, p_x = X.shape
+        if p_x != n_w:
+            idx = 0
+            new_col = np.array([1]*n_x)
+            X = np.insert(X, idx, new_col, axis=1)
+        return np.matmul(self.W,X.T)    
+
+        
+    def predict(self,X):
+        disc = self.predict_discriminant(X)
+        return np.array(disc > 0,int)
+    
+    
+class DiscriminantAnalysis(DiscriminantClassifier):
+    def __init__(self, alpha = 1):
+        # alpha = 1 : full QDA
+        # alpha = 0 : LDA (pooled covariance matrices)
+        self.alpha = alpha
+        #alpha preset to one so that we have quadratic discriminant
+            
+    def setUp(self, X, y):
+        self.y = y
+        self.X = X
+        self.classes = np.unique(self.y)
+        
+        if (np.sort(self.classes) != np.arange(len(self.classes))).all():
+            raise ValueError('Please make class labels increasing integers')
+        
+        self.K = len(self.classes)
+        self.n, self.p = self.X.shape
+        
+    def _compute_k_data(self):
+        self.prior = {}
+        self.means = {}
+        self.covariances = {}
+        self.Nk = {}
+
+        for k in self.classes:
+            idx = np.where(self.y == k)
+            X_temp = self.X[idx]
+            self.Nk[k] = X_temp.shape[0]
+            self.prior[k] = self.Nk[k]/self.n
+            self.means[k] = X_temp.mean(0)
+            self.covariances[k] = np.cov(X_temp.T)
+            
+    def _compute_pooled_covariance(self):
+        self.pooled_covariance = 0
+        for k,v in self.covariances.items():
+            self.pooled_covariance+=v*self.n*self.prior[k]
+        self.pooled_covariance*=(1/(self.n-self.K))
+        
+    def _compute_reg_covariance(self):
+        for k in self.covariances.keys():
+            self.covariances[k] = self.alpha*self.covariances[k] +  (1-self.alpha)*self.pooled_covariance
+        
+    def fit(self, X, y):
+        self.setUp(X,y)
+        self._compute_k_data()
+        self._compute_pooled_covariance()
+        self._compute_reg_covariance()
+        
+    def _delta(self,k,x):
+        first = 0.5*np.log(np.linalg.det(self.covariances[k]))
+        diff = (x - self.means[k])
+        second = 0.5*np.sum(diff*np.matmul(diff, np.linalg.inv(self.covariances[k])),1)
+        third = np.log(self.prior[k])
+
+        return -first - second + third
+        
+    def predict_discriminant(self, X):
+        n,p = X.shape
+        delta = np.zeros((n,self.K))
+        
+        for k in self.classes:
+            delta[:,k] = self._delta(k,X)
+        
+        return delta
+    
+    def predict(self, X):
+        return np.argmax(self.predict_discriminant(X),1)
