@@ -1,0 +1,77 @@
+from scipy.stats import multivariate_normal
+import numpy as np
+
+
+class NaiveBayes:
+    def __init__(self):
+        pass
+class GaussianNaiveBayes(NaiveBayes):
+    """
+    This is just the continous case for now, still need to do the categorical case.
+    """
+    def __init__(self):
+        pass
+    
+    def setUp(self, X, y):
+        self.classes = np.unique(y)
+        self.K = len(self.classes)
+        
+        self.X = X
+        self.y = y
+        
+        self.N, self.p = self.X.shape
+    
+    def _find_distribution_data(self):
+
+        self.data = {}
+        self.PCk = {}
+
+        for p_i in np.arange(self.p):
+            self.data[p_i] = {}
+            for k in self.classes:
+                self.data[p_i][k] = {'means':None,'var':None}
+                
+        for k in self.classes:
+            idx = np.where(self.y == k)
+            X_temp = self.X[idx]
+            n_k,p_k = X_temp.shape
+            means = X_temp.mean(0)
+
+            for i,m in enumerate(means):
+                self.data[i][k]['means'] = means[i]
+
+            var = X_temp.var(0)
+
+            for i,m in enumerate(var):
+                self.data[i][k]['var'] = var[i]
+
+            self.PCk[k] = n_k/self.N
+    
+    def fit(self, X, y):
+        self.setUp(X, y)
+        self._find_distribution_data()
+        
+    def predict_proba(self, X):
+        n,p = X.shape
+        result = np.zeros((n,self.K))
+        for k in self.classes:
+            prob = self.PCk[k]
+
+
+            res = np.zeros((n,self.p))
+
+            for feature in range(self.p):
+                res[:,feature] = multivariate_normal.pdf(X[:,feature], self.data[feature][k]['means'],\
+                                                         self.data[feature][k]['var'])
+            result[:,k] = np.prod(res,1)
+            result[:,k]*=prob
+        
+        return result
+    
+    def predict(self, X):
+        result = self.predict_proba(X)
+        prediction = np.argmax(result, 1)
+        return prediction
+    
+    def get_gaussian_data_per_feature(self, i):
+        return self.data[i]
