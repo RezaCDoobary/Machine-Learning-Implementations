@@ -11,3 +11,4 @@ from linearClassifierModels import *
 from discriminantModels import *
 from kernels import *   
 from naiveBayes import *
+from tree import *
