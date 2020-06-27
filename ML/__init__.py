@@ -4,7 +4,6 @@ sys.path.insert(0, os.getcwd())
 
 from linearModels import *
 from measurements import *
-from mixtureModels import *
 from optimiser import *
 from preprocessing import *
 from linearClassifierModels import *
@@ -15,3 +14,4 @@ from tree import *
 from tests import *
 from metrics import *
 from knn import *
+from kclustering import *
